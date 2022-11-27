@@ -1,69 +1,51 @@
-/*
- * Send this function a luminance value between 0.0 and 1.0,
- * and it returns L* which is "perceptual lightness"
- */
+function linearize (channel) {
+    return channel <= 0.04045 
+        ? channel / 12.92
+        : Math.pow(((channel + 0.055) / 1.055), 2.4);
+}
+
+function getLuminance (R, G, B) {
+    const normalizedChannels = [R / 255, G / 255, B / 255];
+    const [linearR, linearG, linearB] = normalizedChannels.map(linearize);
+    const luminance = 0.2126 * linearR + 0.7152 * linearG + 0.0722 * linearB;
+    return luminance;
+}
+
 function getLightness (R, G, B) {
-    function luminance (R, G, B) {
-        /* 
-         * Send this function a decimal sRGB gamma encoded color value
-         * between 0.0 and 1.0, and it returns a linearized value.
-         */
-        function linearize (channel) {
-            return channel <= 0.04045 
-                ? channel / 12.92
-                : Math.pow(((channel + 0.055) / 1.055), 2.4);
-        }
-    
-        const normalizedChannels = [R / 255, G / 255, B / 255];
-        const [linearR, linearG, linearB] = normalizedChannels.map(linearize);
-        const luminance = 0.2126 * linearR + 0.7152 * linearG + 0.0722 * linearB;
-        return luminance;
-    }
-
-    const _luminance = luminance(R, G, B);
-
-    /* 
-     * The CIE standard states 0.008856 but 216/24389 
-     * is the intent for 0.008856451679036
-     */
-    return  _luminance <= 216 / 24389 
-        /* 
-         * The CIE standard states 903.3, but 24389/27 
-         * is the intent, making 903.296296296296296
-         */
-        ? _luminance * (24389 / 27)  
-        : Math.pow(_luminance, 1 / 3) * 116 - 16;
+    const luminance = getLuminance(R, G, B);
+    return luminance <= 216 / 24389 
+        ? luminance * (24389 / 27)  
+        : Math.pow(luminance, 1 / 3) * 116 - 16;
 }
 
-const decayCallback = (decay) => (max) => {
-    return [max, max * decay * decay, max * decay];
+function getDecayFunctionFromOrder([X, Y, Z]) {
+    return (decay) => (max) => ({ 
+        [X]: max, 
+        [Y]: max * decay,
+        [Z]: max * Math.pow(decay, 2)
+    }); 
 }
 
-function generateColorFromLightness (targetLightness, decayCallback) {
-    const EPSILON = 0.1;
-    let   max     = 0;
-    let   result  = {
-        currentLightness: null,
-        currentRGBValues: null,
-        currentError    : Infinity
-    };
-    while (result.currentError > EPSILON) {
-        if (max === 255) return result;
-        max++;
-        const [R, G, B] = decayCallback(max);
-        const currentLightness = getLightness(R, G, B);
-        result = { 
-            currentLightness: currentLightness,
-            currentRGBValues: [R, G, B].map(Math.round),
-            currentError    : Math.abs(targetLightness - currentLightness)
+function generateColorFromLightness (target, decay, order) {
+    const decayFunction  = getDecayFunctionFromOrder(order);
+    let state = { max: 0, currentLightness: null, currentRGBValues: null };
+    while (state.currentLightness < target) {
+        state.max === 255 ? decay += 0.01 : state.max++;
+        const { R, G, B } = decayFunction(decay)(state.max);
+        state = { 
+            ...state,
+            currentLightness: getLightness(R, G, B),
+            currentRGBValues: [R, G, B].map(Math.round)
         };
     }
-    return result;
+    return state;
 }
 
-const decay          = 0.62;
-const lightness      = getLightness(54, 54, 54);
-const generatedColor = generateColorFromLightness(lightness, decayCallback(decay));
+const lightness = getLightness(54, 54, 54);
+const decay     = 0.62;
+const order     = ['R', 'B', 'G'];
+
+const generatedColor = generateColorFromLightness(lightness, decay, order);
 
 console.log('target lightness:', lightness);
 console.log('current result:'  , generatedColor);
