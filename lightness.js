@@ -18,7 +18,7 @@ function getLightness (R, G, B) {
         : Math.pow(luminance, 1 / 3) * 116 - 16;
 }
 
-function getDecayFunctionFromOrder([X, Y, Z]) {
+function generateDecayFunctionFromOrder([X, Y, Z]) {
     return (decay) => (max) => ({ 
         [X]: max, 
         [Y]: max * decay,
@@ -26,10 +26,11 @@ function getDecayFunctionFromOrder([X, Y, Z]) {
     }); 
 }
 
-function generateColorFromLightness (target, decay, order) {
-    const decayFunction  = getDecayFunctionFromOrder(order);
-    let state = { max: 0, currentLightness: null, currentRGBValues: null };
-    while (state.currentLightness < target) {
+function generateColorFromGraytone (graytone, order, decay) {
+    const decayFunction   = generateDecayFunctionFromOrder(order);
+    const targetLightness = getLightness(graytone, graytone, graytone);
+    let   state = { max: 0, currentLightness: null, currentRGBValues: null };
+    while (state.currentLightness < targetLightness) {
         state.max === 255 ? decay += 0.01 : state.max++;
         const { R, G, B } = decayFunction(decay)(state.max);
         state = { 
@@ -38,14 +39,12 @@ function generateColorFromLightness (target, decay, order) {
             currentRGBValues: [R, G, B].map(Math.round)
         };
     }
-    return state;
+    return state.currentRGBValues;
 }
 
-const lightness = getLightness(54, 54, 54);
-const decay     = 0.62;
-const order     = ['R', 'B', 'G'];
+const graytone       = 150;
+const order          = ['B', 'R', 'G'];
+const decay          = 0.62;
+const generatedColor = generateColorFromGraytone(graytone, order, decay);
 
-const generatedColor = generateColorFromLightness(lightness, decay, order);
-
-console.log('target lightness:', lightness);
-console.log('current result:'  , generatedColor);
+console.log(generatedColor);
