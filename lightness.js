@@ -35,19 +35,22 @@ function getLightness (R, G, B) {
         : Math.pow(_luminance, 1 / 3) * 116 - 16;
 }
 
-function generateColorFromLightness (targetLightness, decay) {
+const decayCallback = (decay) => (max) => {
+    return [max, max * decay * decay, max * decay];
+}
+
+function generateColorFromLightness (targetLightness, decayCallback) {
     const EPSILON = 0.1;
-    let   R       = 0;
+    let   max     = 0;
     let   result  = {
         currentLightness: null,
         currentRGBValues: null,
         currentError    : Infinity
     };
     while (result.currentError > EPSILON) {
-        if (R === 255) return result;
-        R++;
-        const B = R * decay;
-        const G = B * decay;
+        if (max === 255) return result;
+        max++;
+        const [R, G, B] = decayCallback(max);
         const currentLightness = getLightness(R, G, B);
         result = { 
             currentLightness: currentLightness,
@@ -58,7 +61,9 @@ function generateColorFromLightness (targetLightness, decay) {
     return result;
 }
 
-const lightness = getLightness(54, 54, 54);
+const decay          = 0.62;
+const lightness      = getLightness(54, 54, 54);
+const generatedColor = generateColorFromLightness(lightness, decayCallback(decay));
 
 console.log('target lightness:', lightness);
-console.log('current result:'  , generateColorFromLightness(lightness, 0.62));
+console.log('current result:'  , generatedColor);
