@@ -29,7 +29,11 @@ function generateDecayFunctionFromOrder([X, Y, Z]) {
 function generateColorFromGraytone (graytone, order, decay) {
     const decayFunction   = generateDecayFunctionFromOrder(order);
     const targetLightness = getLightness(graytone, graytone, graytone);
-    let   state = { max: 0, currentLightness: null, currentRGBValues: null };
+    let   state           = { 
+        max             : 0,
+        currentLightness: null,
+        currentRGBValues: null
+    };
     while (state.currentLightness < targetLightness) {
         state.max === 255 ? decay += 0.01 : state.max++;
         const { R, G, B } = decayFunction(decay)(state.max);
@@ -42,9 +46,25 @@ function generateColorFromGraytone (graytone, order, decay) {
     return state.currentRGBValues;
 }
 
-const graytone       = 150;
-const order          = ['B', 'R', 'G'];
-const decay          = 0.62;
+function generateLightnessSpectrum (graytone, order) {
+    const spectra = [];
+    for (let i = 0; i <= 100; i++) {
+        spectra.push(generateColorFromGraytone(graytone, order, i / 100));
+    }
+    return spectra;
+}
+
+/*
+const graytone       = 54;
+const order          = ['G', 'B', 'R'];
+const decay          = 0.5;
 const generatedColor = generateColorFromGraytone(graytone, order, decay);
 
-console.log(generatedColor);
+console.log(
+    generatedColor,
+    getLightness(graytone, graytone, graytone), 
+    getLightness(...generatedColor)
+);
+*/
+
+console.log(generateLightnessSpectrum(54, order));
